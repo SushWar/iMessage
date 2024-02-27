@@ -88,13 +88,15 @@ const main = async () => {
           const headCookies = req?.headers.cookie?.split(";")
 
           const idx: any = headCookies?.filter((item: string, id: number) => {
-            if (item.includes("clientToken")) {
+            if (
+              item.includes("clientToken") ||
+              item.includes("clientBoardToken")
+            ) {
               return id
             }
           })
 
           const sessiontoken = idx[0]?.split("=")
-          // console.log(sessiontoken)
           const decode = await jwt.decode({
             token: sessiontoken?.at(1),
             secret: String(process.env.NEXTAUTH_SECRET),

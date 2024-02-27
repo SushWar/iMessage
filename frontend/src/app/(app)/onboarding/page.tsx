@@ -1,7 +1,6 @@
 "use client"
-
 import { useMutation } from "@apollo/client"
-import { Center, Stack, Text, Input, Button, Spinner } from "@chakra-ui/react"
+import { Center, Stack, Text, Input, Button } from "@chakra-ui/react"
 import { redirect, useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import toast from "react-hot-toast"
@@ -9,12 +8,13 @@ import { userCommands } from "../../../graphql/operations/user"
 import { CreateUsernameData, CreateUsernameVariable } from "@/util/type"
 import { useSession } from "next-auth/react"
 import axios from "axios"
+import Loader from "@/lib/components/loader"
 
 export default function Boarding() {
   const session = useSession()
   const router = useRouter()
   const [username, setUsername] = useState("")
-  const [loadPage, setLoadPage] = useState(true)
+  const [loader, setLoader] = useState(true)
   const [createUsername, { data, loading, error }] = useMutation<
     CreateUsernameData,
     CreateUsernameVariable
@@ -27,6 +27,9 @@ export default function Boarding() {
         toast.error(data?.createUsername.error)
       } else if (data?.createUsername.success) {
         toast.success("Username Successfully created")
+        const response = await axios.post("/api/cookie/deleteCookie", {
+          name: "clientBoardToken",
+        })
         router.push("/v1/imessage")
       } else {
         toast.error("There was an error")
@@ -44,21 +47,16 @@ export default function Boarding() {
     )
     try {
       if (session.data && session.status === "authenticated") {
-        console.log("1")
         if (session.data.user.onboarding === true) {
-          console.log("2")
           router.push("/v1/imessage")
-          // redirect(`/v1/imessage`)
         } else {
-          console.log("3")
           const response = await axios.post("/api/cookie/setCookie", {
-            name: "clientToken",
+            name: "clientBoardToken",
           })
-          console.log(response)
-          setLoadPage(false)
+
+          setLoader(false)
         }
       } else {
-        console.log("4")
         redirect(`/auth/login`)
       }
     } catch (error: any) {
@@ -78,14 +76,8 @@ export default function Boarding() {
     <>
       <div>
         <Center height="100vh">
-          {loadPage ? (
-            <Spinner
-              thickness="4px"
-              speed="0.65s"
-              emptyColor="gray.200"
-              color="blue.500"
-              size="xl"
-            />
+          {loader ? (
+            <Loader />
           ) : (
             <Stack spacing={8} align="center">
               <Text fontSize="4xl">On Boarding</Text>

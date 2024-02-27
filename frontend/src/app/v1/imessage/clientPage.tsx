@@ -1,20 +1,26 @@
 "use client"
 import { Session } from "next-auth"
-import { Flex, Spinner } from "@chakra-ui/react"
+import { Center, Flex } from "@chakra-ui/react"
 import ConverstationWrapper from "./conversation/conversationWrapper"
 import FeddWrapper from "./feed/feedWrapper"
 import { redirect, useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import axios from "axios"
+import Loader from "@/lib/components/loader"
 
 interface Wrapper {
   session: Session
 }
 
 export default function MessageClientPage({ session }: Wrapper) {
-  const [loadPage, setLoadPage] = useState(true)
+  const [loader, setLoader] = useState(true)
+
+  /*
+   * check authentic user and if onboarding is completed, otherwise redirect to respected page
+   * check if the cookie is set or not, to avoid sending post request again and again
+   */
+
   const checkAction = async () => {
-    console.log("Inside Client page , ", session.expires)
     try {
       if (!session.user) {
         redirect(`/auth/login`)
@@ -22,17 +28,24 @@ export default function MessageClientPage({ session }: Wrapper) {
         redirect("/onboarding")
       }
 
-      const response = await axios.post("/api/cookie/setCookie", {
-        name: "clientToken",
+      const alreadyCookie = await axios.get("/api/cookie/getCookie", {
+        params: { name: "clientToken" },
       })
-      console.log(response)
+      if (alreadyCookie.data.data) {
+        console.log("Cookie already set")
+      } else {
+        console.log("Cookie Not set")
+        const response = await axios.post("/api/cookie/setCookie", {
+          name: "clientToken",
+        })
+      }
     } catch (error: any) {
       console.log(
         "Error in Message Client page check action :- ",
         error.message
       )
     } finally {
-      setLoadPage(false)
+      setLoader(false)
     }
   }
 
@@ -47,22 +60,16 @@ export default function MessageClientPage({ session }: Wrapper) {
   return (
     <div>
       <div>
-        <Flex height={"100vh"}>
-          {loadPage ? (
-            <Spinner
-              thickness="4px"
-              speed="0.65s"
-              emptyColor="gray.200"
-              color="blue.500"
-              size="xl"
-            />
-          ) : (
-            <>
-              <ConverstationWrapper session={session} />
-              <FeddWrapper session={session} />
-            </>
-          )}
-        </Flex>
+        {loader ? (
+          <Center height="100vh">
+            <Loader />
+          </Center>
+        ) : (
+          <Flex height={"100vh"}>
+            <ConverstationWrapper session={session} />
+            <FeddWrapper session={session} />
+          </Flex>
+        )}
       </div>
     </div>
   )
