@@ -13,13 +13,12 @@ const resolvers = {
       context: GraphQLContext
     ): Promise<Array<any> | null> => {
       const { session } = context
-      // console.log(args.username)
       if (!session) {
         console.log("inside false")
-        // return { error: "Not authorized" }
+
         return null
       }
-      // console.log("inside true")
+
       const { username: myUsername } = session
 
       try {
@@ -32,16 +31,13 @@ const resolvers = {
                 $options: "i",
               },
             },
-            // { username: { $ne: myUsername } },
           ],
         })
 
-        // console.log(users)
-        // return { username: users }
         return users
       } catch (error: any) {
         console.log("SerchUser query error", error)
-        // return { error: error.message }
+
         return null
       }
     },
@@ -55,8 +51,6 @@ const resolvers = {
       if (!context.session) {
         return { error: "Not authorized" }
       }
-
-      console.log("the context is :- ", context)
       try {
         const duplicate = await User.findOne({ username: args.username })
 
