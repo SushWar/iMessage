@@ -10,6 +10,14 @@ export const userCommands = {
         }
       }
     `,
+    searchUserById: gql`
+      query SearchUsersById($id: String!) {
+        searchUsersById(id: $id) {
+          _id
+          username
+        }
+      }
+    `,
   },
   Mutations: {
     createUsername: gql`

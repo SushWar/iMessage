@@ -10,11 +10,13 @@ export interface CreateUsernameVariable {
 }
 
 export interface SearchUsersInput {
-  username: String
+  id?: String
+  username?: String
 }
 
 export interface SearchUsersOutput {
-  searchUsers: Array<SearchedUser>
+  searchUsers?: Array<SearchedUser>
+  searchUsersById?: SearchedUser
 }
 
 export interface SearchedUser {
@@ -40,5 +42,5 @@ export interface CreateConversationOutput {
 }
 
 export interface CreateConversationInput {
-  participantIds: Array<string>
+  participants: Array<SearchedUser>
 }

@@ -10,12 +10,16 @@ const conversationSchema = new mongoose.Schema({
   messages: {
     type: Array<String>,
   },
+  name: {
+    type: String,
+  },
   createdAt: {
     type: Date,
     default: Date.now,
   },
   updatedAt: {
     type: Date,
+    default: Date.now,
   },
 })
 

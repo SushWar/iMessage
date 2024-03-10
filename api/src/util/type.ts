@@ -34,12 +34,13 @@ export interface CreateUsernameResponse {
   error?: string
 }
 
-export interface SearchUsernameResposne {
-  Users?: Array<SearchUsersData>
-  error?: string
-}
+//Not in use
+// export interface SearchUsernameResposne {
+//   Users?: Array<SearchUsersData>
+//   error?: string
+// }
 
 export interface SearchUsersData {
-  id: string
+  _id: string
   username: string
 }

@@ -1,9 +1,5 @@
 import User from "../../mongodb/models/user"
-import {
-  CreateUsernameResponse,
-  GraphQLContext,
-  SearchUsernameResposne,
-} from "../../util/type"
+import { CreateUsernameResponse, GraphQLContext } from "../../util/type"
 
 const resolvers = {
   Query: {
@@ -37,6 +33,29 @@ const resolvers = {
         return users
       } catch (error: any) {
         console.log("SerchUser query error", error)
+
+        return null
+      }
+    },
+    searchUsersById: async (
+      _: any,
+      args: { id: string },
+      context: GraphQLContext
+    ): Promise<any | null> => {
+      const { id } = args
+      const { session } = context
+      if (!session) {
+        console.log("inside false")
+
+        return null
+      }
+      console.log("INSIDE searchUserByID --> ", id)
+      try {
+        const users = await User.findById(id)
+
+        return users
+      } catch (error: any) {
+        console.log("SerchUserById query error", error)
 
         return null
       }

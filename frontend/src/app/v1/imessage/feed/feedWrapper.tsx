@@ -17,7 +17,6 @@ export default function FeddWrapper({ session }: Wrapper) {
       display={{ base: search ? "flex" : "none", md: "flex" }}
       width="100%"
       direction="column"
-      border="1px solid red"
     >
       Feed wrapper
       <div>{search ? <Flex>{search}</Flex> : <div>No Conversation</div>}</div>

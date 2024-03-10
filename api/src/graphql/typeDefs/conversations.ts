@@ -1,10 +1,15 @@
 const typeDefs = `#graphql
 
+    input ParticipantInput {
+    _id: String
+    username: String
+    }
     type Conversation {
         conversationId: String
         # latestMessage: Message
         participants: [String]
         updatedAt: Date
+        name:String
     }
      type Participant {
         id: String
@@ -22,7 +27,7 @@ const typeDefs = `#graphql
     }
 
     type Mutation {
-        createConversation(participantIds: [String]): CreateConversationResponse
+        createConversation(participants: [ParticipantInput!]!): CreateConversationResponse
     }
 
     type Subscription {

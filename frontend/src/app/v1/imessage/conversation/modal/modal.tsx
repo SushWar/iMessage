@@ -39,13 +39,18 @@ export default function ConversationModal({
   session,
 }: Wrapper) {
   const {
-    user: { id: myUsername },
+    user: { id: sessionId, username: sessionUsername },
   } = session
+  const sessionUserData = {
+    _id: sessionId,
+    username: sessionUsername,
+  }
   const router = useRouter()
   const pathname = usePathname()
-  const searchParams = useSearchParams()
+
   const [username, setUsername] = useState("")
   const [participants, setParticipants] = useState<Array<SearchedUser>>([])
+  // console.log(participants) //console log
   const [searchUsers, { data, error, loading }] = useLazyQuery<
     SearchUsersOutput,
     SearchUsersInput
@@ -56,12 +61,17 @@ export default function ConversationModal({
     )
   const onCreateConversation = async () => {
     try {
-      const participantIds = [myUsername, ...participants.map((p) => p._id)]
-      // console.log(participantIds)
+      const participantIds = [
+        sessionUserData,
+        ...participants.map((p) => {
+          return { _id: p._id, username: p.username }
+        }),
+      ]
+      // console.log("Participants ids --> ", participantIds) //console.log()
       const { data } = await createConversation({
-        variables: { participantIds },
+        variables: { participants: participantIds },
       })
-      // console.log("Here is the CREATE CONVERSATION data", data)
+
       const error = data?.createConversation.error
       if (error) {
         if (error.includes("duplicate")) {

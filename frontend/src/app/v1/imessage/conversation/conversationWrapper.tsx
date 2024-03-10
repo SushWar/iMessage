@@ -1,18 +1,22 @@
 "use client"
 import { Session } from "next-auth"
 import ClientLogout from "@/lib/logout/logout"
-import { Box } from "@chakra-ui/react"
+import { Box, Container } from "@chakra-ui/react"
 import ConverstaionList from "./conversationList"
 import { useQuery } from "@apollo/client"
 import { conversationCommands } from "../../../../graphql/operations/conversation"
 import { ConversationDataOutput } from "@/util/type"
 import { useEffect } from "react"
+import { usePathname, useRouter } from "next/navigation"
 
 interface Wrapper {
   session: Session
 }
 
 export default function ConverstationWrapper({ session }: Wrapper) {
+  const router = useRouter()
+  const pathname = usePathname()
+
   const {
     data: conversationData,
     error: conversationError,
@@ -21,42 +25,39 @@ export default function ConverstationWrapper({ session }: Wrapper) {
   } = useQuery<ConversationDataOutput>(
     conversationCommands.Queries.listConversations
   )
-  // console.log(
-  //   "INSIDE conversation wrapper QUERY DATA -- ",
-  //   conversationData?.conversations
-  // )
-
+  // console.log("View Conversation data ", conversationData)
   const subscribeToNewConversations = () => {
     subscribeToMore({
       document:
         conversationCommands.Subscriptions.conversationSubscriptionCreated,
       updateQuery: (prev, { subscriptionData }) => {
         try {
-          // console.log(
-          //   "INSIDE conversation wrapper HERE IS PREV Data ",
-          //   prev.conversations
-          // )
-          // console.log("Subscription 1")
-          // console.log(
-          //   "INSIDE conversation wrapper HERE IS SUBSCRIPTION DATA",
-          //   subscriptionData.data.conversationCreated
-          // )
           if (!subscriptionData.data) {
             return prev
           }
-          // console.log("Subscription 2")
+
           const newConversation = subscriptionData.data.conversationCreated
-          // console.log("Subscription 3")
+
           return Object.assign({}, prev, {
             conversations: [newConversation, ...prev.conversations],
           })
         } catch (error: any) {
-          // console.log("Subscription 4")
           console.log("INSIDE CONVERSATION WRAPPER ERROR, ", error.message)
           return error
         }
       },
     })
+  }
+
+  const onViewConversation = async (conversationId: string) => {
+    try {
+      router.push(pathname + "?" + `conversationId=${conversationId}`)
+    } catch (error: any) {
+      console.log(
+        "ERROR in onViewConversation in conversation wrapper",
+        error.message
+      )
+    }
   }
 
   useEffect(() => {
@@ -72,10 +73,11 @@ export default function ConverstationWrapper({ session }: Wrapper) {
       <ConverstaionList
         session={session}
         conversations={conversationData?.conversations || []}
+        onViewConversation={onViewConversation}
       />
-      <div className=" py-4">
+      <Container my={4}>
         <ClientLogout />
-      </div>
+      </Container>
     </Box>
   )
 }

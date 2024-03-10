@@ -8,6 +8,7 @@ export const conversationCommands = {
           conversationId
           participants
           updatedAt
+          name
         }
         error
       }
@@ -15,8 +16,8 @@ export const conversationCommands = {
   },
   Mutations: {
     createConversation: gql`
-      mutation CreateConversation($participantIds: [String]!) {
-        createConversation(participantIds: $participantIds) {
+      mutation CreateConversation($participants: [ParticipantInput!]!) {
+        createConversation(participants: $participants) {
           conversationId
           error
         }

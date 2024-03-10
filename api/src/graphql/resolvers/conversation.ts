@@ -1,8 +1,9 @@
 import { withFilter } from "graphql-subscriptions"
 import Conversation from "../../mongodb/models/conversation"
 import User from "../../mongodb/models/user"
-import { GraphQLContext } from "../../util/type"
+import { GraphQLContext, SearchUsersData } from "../../util/type"
 import mongoose, { Schema } from "mongoose"
+import { defaultName } from "../../util/function"
 
 const resolvers = {
   Query: {
@@ -36,12 +37,15 @@ const resolvers = {
           { $unwind: "$result" },
           {
             $project: {
+              _id: 0,
               conversationId: "$conversations",
               participants: "$result.participants",
               updatedAt: "$result.updatedAt",
+              name: "$result.name",
             },
           },
         ])
+        // console.log("Inside search Conversation ", conversation)
         return conversation
       } catch (error: any) {
         console.log("Inside conversation query error", error.message)
@@ -52,26 +56,35 @@ const resolvers = {
   Mutation: {
     createConversation: async (
       _: any,
-      args: { participantIds: Array<string> },
+      args: { participants: Array<SearchUsersData> },
       context: GraphQLContext
     ): Promise<{ conversationId?: Object; error?: string }> => {
       const { session, pubsub } = context
-      const { participantIds } = args
-      // console.log("Inside Create Conversation", args.participantIds)
+      const { participants } = args
       if (!session) {
         console.log("inside false")
         return { error: "Not authorized" }
       }
+      // console.log("Inside Create Conversation", participants)
+
+      // console.log(
+      //   "Testing fetch Username --> ",
+      //   defaultName(participants, session?.id)
+      // )
 
       try {
+        const conversationName = defaultName(participants, session.id)
+        const participantIds = participants.map((p) => p._id)
+        console.log("particpants id testing ", participantIds)
         const conversation = new Conversation({
           participants: participantIds,
+          name: conversationName,
         })
 
         await conversation.save()
 
-        for (let i = 0; i < participantIds.length; i++) {
-          await User.findByIdAndUpdate(participantIds[i], {
+        for (let i = 0; i < participants.length; i++) {
+          await User.findByIdAndUpdate(participants[i]._id, {
             $push: { conversations: conversation._id },
           })
         }
@@ -88,6 +101,8 @@ const resolvers = {
         console.log("Inside create conversation error", error)
         return { error: error.message }
       }
+
+      // return { conversationId: "Testing" }
     },
   },
 
