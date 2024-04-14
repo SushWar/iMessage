@@ -1,24 +1,27 @@
 import mongoose, { Document, Model, Schema } from "mongoose"
 
-const messageSchema = new mongoose.Schema({
-  _id: {
-    type: Schema.Types.ObjectId,
-  },
+export const messageSchema = new mongoose.Schema({
+  // id: {
+  //   type: Schema.Types.ObjectId,
+  // },
   conversationId: {
     type: String,
   },
   senderId: {
-    type: String,
+    id: String,
+    username: String,
   },
   body: {
     type: String,
   },
+  hasSeenMessage: [Schema.Types.ObjectId],
   createdAt: {
     type: Date,
     default: Date.now,
   },
   updatedAt: {
     type: Date,
+    default: Date.now,
   },
 })
 

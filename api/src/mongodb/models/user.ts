@@ -1,9 +1,9 @@
 import mongoose, { Document, Model, Schema } from "mongoose"
 
-const userSchema = new mongoose.Schema({
-  _id: {
-    type: mongoose.Schema.Types.ObjectId,
-  },
+export const userSchema = new mongoose.Schema({
+  // _id: {
+  //   type: mongoose.Schema.Types.ObjectId,
+  // },
   name: {
     type: String,
   },
@@ -30,9 +30,7 @@ const userSchema = new mongoose.Schema({
   sessions: {
     type: Array<String>,
   },
-  conversations: {
-    type: Array<String>,
-  },
+  conversations: [Schema.Types.ObjectId],
   createdAt: {
     type: Date,
     default: Date.now,

@@ -5,8 +5,13 @@ export const conversationCommands = {
     listConversations: gql`
       query Conversations {
         conversations {
-          conversationId
-          participants
+          id
+          latestMessage
+          participants {
+            _id
+            username
+          }
+          hasSeenLastMessage
           updatedAt
           name
         }
@@ -23,14 +28,43 @@ export const conversationCommands = {
         }
       }
     `,
+    markConversationRead: gql`
+      mutation MarkConversation($conversationId: String!) {
+        markConversationAsRead(conversationId: $conversationId)
+      }
+    `,
   },
   Subscriptions: {
     conversationSubscriptionCreated: gql`
       subscription ConversationCreated {
         conversationCreated {
-          conversationId
-          participants
+          id
+          latestMessage
+          participants {
+            _id
+            username
+          }
+          hasSeenLastMessage
           updatedAt
+          name
+        }
+      }
+    `,
+
+    conversationUpdated: gql`
+      subscription ConversationUpdated {
+        conversationUpdated {
+          conversation {
+            id
+            latestMessage
+            participants {
+              _id
+              username
+            }
+            hasSeenLastMessage
+            updatedAt
+            name
+          }
         }
       }
     `,

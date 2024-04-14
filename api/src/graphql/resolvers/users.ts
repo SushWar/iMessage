@@ -1,3 +1,4 @@
+import { GraphQLError } from "graphql"
 import User from "../../mongodb/models/user"
 import { CreateUsernameResponse, GraphQLContext } from "../../util/type"
 
@@ -7,18 +8,16 @@ const resolvers = {
       _: any,
       args: { username: string },
       context: GraphQLContext
-    ): Promise<Array<any> | null> => {
+    ): Promise<Array<typeof User>> => {
       const { session } = context
       if (!session) {
-        console.log("inside false")
-
-        return null
+        throw new GraphQLError("Not authorized")
       }
 
       const { username: myUsername } = session
 
       try {
-        const users = await User.find({
+        const users = (await User.find({
           $or: [
             {
               username: {
@@ -28,38 +27,39 @@ const resolvers = {
               },
             },
           ],
-        })
+        })) as Array<typeof User>
 
         return users
       } catch (error: any) {
         console.log("SerchUser query error", error)
 
-        return null
+        throw new GraphQLError(error.message)
       }
     },
-    searchUsersById: async (
-      _: any,
-      args: { id: string },
-      context: GraphQLContext
-    ): Promise<any | null> => {
-      const { id } = args
-      const { session } = context
-      if (!session) {
-        console.log("inside false")
 
-        return null
-      }
-      console.log("INSIDE searchUserByID --> ", id)
-      try {
-        const users = await User.findById(id)
+    // searchUsersById: async (
+    //   _: any,
+    //   args: { id: string },
+    //   context: GraphQLContext
+    // ): Promise<any | null> => {
+    //   const { id } = args
+    //   const { session } = context
+    //   if (!session) {
+    //     console.log("inside false")
 
-        return users
-      } catch (error: any) {
-        console.log("SerchUserById query error", error)
+    //     return null
+    //   }
+    //   console.log("INSIDE searchUserByID --> ", id)
+    //   try {
+    //     const users = await User.findById(id)
 
-        return null
-      }
-    },
+    //     return users
+    //   } catch (error: any) {
+    //     console.log("SerchUserById query error", error)
+
+    //     return null
+    //   }
+    // },
   },
   Mutation: {
     createUsername: async (
@@ -67,28 +67,30 @@ const resolvers = {
       args: { username: string },
       context: GraphQLContext
     ): Promise<CreateUsernameResponse> => {
-      if (!context.session) {
-        return { error: "Not authorized" }
+      const { session } = context
+      if (!session) {
+        throw new GraphQLError("Not authorized")
       }
       try {
-        const duplicate = await User.findOne({ username: args.username })
+        // const duplicate = await User.findOne({ username: args.username })
 
-        if (duplicate) {
-          return { error: "Username already exists" }
-        }
+        // if (duplicate) {
+        //   return { error: "Username already exists" }
+        //   throw new GraphQLError("Username")
+        // }
 
         const val = await User.updateOne(
-          { _id: context.session.id },
+          { _id: session.id },
           { username: args.username, onboarding: true }
         )
 
-        if (val) {
+        if (val.acknowledged && val.matchedCount == 1) {
           return { success: true }
         }
-
-        return { error: "Internal error" }
+        throw new GraphQLError("Onboarding Unsuccessfull")
       } catch (error: any) {
-        return { error: error.message }
+        // return { error: error.message }
+        throw new GraphQLError(error.message)
       }
     },
   },

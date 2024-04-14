@@ -50,7 +50,7 @@ export default function ConversationModal({
 
   const [username, setUsername] = useState("")
   const [participants, setParticipants] = useState<Array<SearchedUser>>([])
-  // console.log(participants) //console log
+
   const [searchUsers, { data, error, loading }] = useLazyQuery<
     SearchUsersOutput,
     SearchUsersInput
@@ -67,7 +67,7 @@ export default function ConversationModal({
           return { _id: p._id, username: p.username }
         }),
       ]
-      // console.log("Participants ids --> ", participantIds) //console.log()
+
       const { data } = await createConversation({
         variables: { participants: participantIds },
       })
@@ -79,7 +79,7 @@ export default function ConversationModal({
         }
         return
       }
-
+      // console.log("Conversation Modal ", data)
       router.push(
         pathname +
           "?" +

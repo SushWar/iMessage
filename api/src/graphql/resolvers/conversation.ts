@@ -2,8 +2,10 @@ import { withFilter } from "graphql-subscriptions"
 import Conversation from "../../mongodb/models/conversation"
 import User from "../../mongodb/models/user"
 import { GraphQLContext, SearchUsersData } from "../../util/type"
-import mongoose, { Schema } from "mongoose"
+import mongoose, { ObjectId, Schema } from "mongoose"
 import { defaultName } from "../../util/function"
+import Message from "../../mongodb/models/message"
+import { GraphQLError } from "graphql"
 
 const resolvers = {
   Query: {
@@ -15,7 +17,7 @@ const resolvers = {
       const { session } = context
 
       if (!session) {
-        return { error: "Not authorized" }
+        throw new GraphQLError("Not authorized")
       }
 
       try {
@@ -36,12 +38,39 @@ const resolvers = {
           },
           { $unwind: "$result" },
           {
+            $lookup: {
+              from: "messages",
+              localField: "result.lastMessageId",
+              foreignField: "_id",
+              as: "test",
+              pipeline: [{ $project: { body: 1, _id: 0, hasSeenMessage: 1 } }],
+            },
+          },
+          {
+            $lookup: {
+              from: "users",
+              localField: "result.participants",
+              foreignField: "_id",
+              as: "participants",
+              pipeline: [{ $project: { username: 1 } }],
+            },
+          },
+          {
             $project: {
               _id: 0,
-              conversationId: "$conversations",
-              participants: "$result.participants",
+              latestMessage: { $first: "$test.body" },
+              hasSeenLastMessage: {
+                $first: "$test.hasSeenMessage",
+              },
+              id: "$conversations",
+              participants: "$participants",
               updatedAt: "$result.updatedAt",
               name: "$result.name",
+            },
+          },
+          {
+            $sort: {
+              updatedAt: -1,
             },
           },
         ])
@@ -62,26 +91,33 @@ const resolvers = {
       const { session, pubsub } = context
       const { participants } = args
       if (!session) {
-        console.log("inside false")
-        return { error: "Not authorized" }
+        throw new GraphQLError("Not authorized")
       }
-      // console.log("Inside Create Conversation", participants)
-
-      // console.log(
-      //   "Testing fetch Username --> ",
-      //   defaultName(participants, session?.id)
-      // )
 
       try {
-        const conversationName = defaultName(participants, session.id)
-        const participantIds = participants.map((p) => p._id)
-        console.log("particpants id testing ", participantIds)
+        const participantIds = participants.map(
+          (p) => new mongoose.Types.ObjectId(p._id)
+        )
+
         const conversation = new Conversation({
           participants: participantIds,
-          name: conversationName,
         })
 
         await conversation.save()
+
+        const sender = { id: session.id, username: session.username }
+
+        const createNewMessage = new Message({
+          conversationId: conversation._id,
+          senderId: sender,
+          body: "",
+          hasSeenMessage: [new mongoose.Types.ObjectId(`${session.id}`)],
+        })
+        createNewMessage.save()
+
+        await Conversation.findOneAndUpdate(conversation._id, {
+          lastMessageId: createNewMessage._id,
+        })
 
         for (let i = 0; i < participants.length; i++) {
           await User.findByIdAndUpdate(participants[i]._id, {
@@ -89,11 +125,38 @@ const resolvers = {
           })
         }
 
+        const conversationAggregate = await Conversation.aggregate([
+          {
+            $match: {
+              _id: new mongoose.Types.ObjectId(`${conversation._id}`),
+            },
+          },
+          {
+            $lookup: {
+              from: "users",
+              localField: "participants",
+              foreignField: "_id",
+              as: "result",
+              pipeline: [{ $project: { username: 1 } }],
+            },
+          },
+          {
+            $project: {
+              createdAt: 0,
+              participants: 0,
+              __v: 0,
+            },
+          },
+        ])
+
         pubsub.publish("CONVERSATION_CREATED", {
           conversationCreated: {
-            conversationId: conversation._id,
-            participants: conversation.participants,
-            updatedAt: conversation.updatedAt,
+            id: conversationAggregate[0]._id,
+            latestMessage: "",
+            participants: conversationAggregate[0].result,
+            hasSeenLastMessage: createNewMessage.hasSeenMessage,
+            updatedAt: conversationAggregate[0].updatedAt,
+            name: conversationAggregate[0].name,
           },
         })
         return { conversationId: conversation._id }
@@ -101,8 +164,33 @@ const resolvers = {
         console.log("Inside create conversation error", error)
         return { error: error.message }
       }
+    },
+    markConversationAsRead: async (
+      _: any,
+      args: { conversationId: string },
+      context: GraphQLContext
+    ): Promise<boolean> => {
+      const { session } = context
+      const { conversationId } = args
 
-      // return { conversationId: "Testing" }
+      if (!session) {
+        throw new GraphQLError("Not authorized")
+      }
+
+      const userObjectId = new mongoose.Types.ObjectId(`${session.id}`)
+
+      try {
+        const updateLastSeen = await Message.updateMany(
+          { conversationId: conversationId },
+          { $addToSet: { hasSeenMessage: userObjectId } }
+        )
+
+        // console.log(updateLastSeen)
+        return true
+      } catch (error: any) {
+        console.log("Mark conversation read error ", error)
+        throw new GraphQLError(error.message)
+      }
     },
   },
 
@@ -122,19 +210,55 @@ const resolvers = {
           _,
           context: GraphQLContextSubscription
         ) => {
+          console.log("session in sub create Conver==> ", context.session)
           const {
             session: { user },
           } = context
+          if (!user) {
+            throw new GraphQLError("Not authorized")
+          }
           const {
             conversationCreated: { participants },
           } = payload
-
           const isParticipant = !!participants.find((p) => {
-            console.log("Participants array --> ", p)
-            return p === user?.id
+            return p._id.toString() === user.id
           })
-          console.log(isParticipant)
           return isParticipant
+        }
+      ),
+    },
+    conversationUpdated: {
+      subscribe: withFilter(
+        (_: any, __: any, context: GraphQLContext) => {
+          const { pubsub } = context
+          return pubsub.asyncIterator(["CONVERSATION_UPDATED"])
+        },
+        (
+          payload: ConversationUpdatedSubscriptionPayload,
+          _,
+          context: GraphQLContextSubscription
+        ) => {
+          // console.log("session in sub converUpdate==> ", context.session)
+          const {
+            session: { user },
+          } = context
+          if (!user) {
+            throw new GraphQLError("Not authorized")
+          }
+          const {
+            conversationUpdated: {
+              conversation: { participants },
+            },
+          } = payload
+          // console.log(
+          //   "Here is the payLoad from subscription updated => ",
+          //   payload.conversationUpdated.conversation.participants
+          // )
+          const isParticipant = !!participants.find((p) => {
+            return p._id.toString() === user.id
+          })
+          return isParticipant
+          // return true
         }
       ),
     },
@@ -143,9 +267,10 @@ const resolvers = {
 
 export interface ConversationCreateSubscriptionPayload {
   conversationCreated: {
-    conversationId: String
-    participants: [String]
+    id: String
+    participants: [{ _id: mongoose.Types.ObjectId; username: String }]
     updatedAt: Date
+    name: String
   }
 }
 
@@ -158,6 +283,17 @@ export interface GraphQLContextSubscription {
       username: String
     }
     expires: String
+  }
+}
+
+export interface ConversationUpdatedSubscriptionPayload {
+  conversationUpdated: {
+    conversation: {
+      id: String
+      participants: [{ _id: mongoose.Types.ObjectId; username: String }]
+      updatedAt: Date
+      name: String
+    }
   }
 }
 

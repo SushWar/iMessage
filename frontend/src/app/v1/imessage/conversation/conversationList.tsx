@@ -9,7 +9,10 @@ import { useSearchParams } from "next/navigation"
 interface Wrapper {
   session: Session
   conversations: Array<any>
-  onViewConversation: (conversationId: string) => void
+  onViewConversation: (
+    conversationId: string,
+    hasSeenLastMessage: boolean
+  ) => void
 }
 
 export default function ConverstaionList({

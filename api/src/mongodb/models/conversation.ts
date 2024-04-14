@@ -1,17 +1,17 @@
 import mongoose, { Document, Model, Schema } from "mongoose"
 
 const conversationSchema = new mongoose.Schema({
-  id: {
-    type: Schema.Types.ObjectId,
-  },
-  participants: {
-    type: Array<String>,
-  },
-  messages: {
-    type: Array<String>,
-  },
+  // id: {
+  //   type: Schema.Types.ObjectId,
+  // },
+  participants: [Schema.Types.ObjectId],
   name: {
     type: String,
+    default: "",
+  },
+  lastMessageId: {
+    type: Schema.Types.ObjectId,
+    unique: true,
   },
   createdAt: {
     type: Date,
